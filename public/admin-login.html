@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login Admin - SATRIA GALUH SPORT</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    body {
+      background: url('assets/images/register-bg.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 2rem;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(5px);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-title {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .form-control {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      border-radius: 5px;
+      margin-bottom: 1rem;
+    }
+    .btn-login {
+      width: 100%;
+      background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+      border: none;
+      padding: 0.75rem;
+      font-weight: bold;
+    }
+    .btn-login:hover {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .btn-back {
+      background: none;
+      border: 1px solid #fff;
+      color: white;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.5rem;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+    .btn-back:hover {
+      background: rgba(255,255,255,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-title"><i class="fas fa-lock me-2"></i>Login Admin</div>
+    <form id="adminLoginForm">
+      <input type="text" class="form-control" placeholder="Username" id="username" required>
+      <input type="password" class="form-control" placeholder="Password" id="password" required>
+      <button type="submit" class="btn btn-login">Login</button>
+    </form>
+    <div id="loginMessage" class="text-center mt-3 text-danger fw-bold"></div>
+
+    <!-- 🔙 Tombol Kembali ke Beranda -->
+    <a href="index.html" class="btn btn-back">
+      <i class="fas fa-arrow-left me-2"></i>Kembali ke Beranda
+    </a>
+  </div>
+
+  <script>
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username, password })
+      });
+
+      const result = await response.json();
+      const msg = document.getElementById('loginMessage');
+      if (result.success) {
+        window.location.href = '/admin-dashboard.html';
+      } else {
+        msg.textContent = result.message || 'Login gagal!';
+      }
+    });
+  </script>
+</body>
+</html>

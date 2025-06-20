@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Form Prestasi - SATRIA GALUH SPORT</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"/>
+  <style>
+    body {
+      background: linear-gradient(to right, #141e30, #243b55);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .form-container {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      max-width: 600px;
+      animation: fadeIn 1s ease-in-out;
+    }
+    .form-title {
+      font-size: 1.8rem;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 1rem;
+    }
+    .form-label {
+      font-weight: 500;
+    }
+    .form-control {
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .btn-submit {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+      font-weight: bold;
+      padding: 0.75rem 2rem;
+      border: none;
+      border-radius: 50px;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+    .btn-submit:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(0, 114, 255, 0.5);
+    }
+    .btn-back {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <div class="form-title"><i class="fas fa-trophy me-2"></i>Form Pendaftaran Prestasi</div>
+    <form id="formPrestasi">
+      <input type="hidden" id="kelas_pertandingan" value="Prestasi">
+      <input type="hidden" id="kelas_otomatis" name="kelas_otomatis">
+
+      <div class="mb-3">
+        <label for="nama" class="form-label">Nama Lengkap</label>
+        <input type="text" class="form-control" id="nama" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="tanggal_lahir" class="form-label">Tanggal Lahir</label>
+        <input type="date" class="form-control" id="tanggal_lahir" required onchange="updateKelasOtomatis()">
+      </div>
+
+      <div class="mb-3">
+        <label for="gender" class="form-label">Jenis Kelamin</label>
+        <select class="form-control" id="gender" required onchange="updateKelasOtomatis()">
+          <option value="" selected disabled>Putra/Putri</option>
+          <option value="Putra">Putra</option>
+          <option value="Putri">Putri</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="club" class="form-label">Nama Dojo / Club</label>
+        <input type="text" class="form-control" id="club" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="perguruan" class="form-label">Perguruan</label>
+        <input type="text" class="form-control" id="perguruan" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Jenis Pertandingan</label>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="pertandingan" id="kata" value="Kata" onchange="onJenisChange(); updateKelasOtomatis()">
+          <label class="form-check-label" for="kata">Kata</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="pertandingan" id="kumite" value="Kumite" onchange="onJenisChange(); updateKelasOtomatis()">
+          <label class="form-check-label" for="kumite">Kumite</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="pertandingan" id="kata_beregu" value="Kata Beregu" onchange="onJenisChange(); updateKelasOtomatis()">
+          <label class="form-check-label" for="kata_beregu">Kata Beregu</label>
+        </div>
+      </div>
+
+      <div class="mb-3" id="inputBereguGroup" style="display:none">
+        <label for="beregu" class="form-label">Nama Tim Kata Beregu</label>
+        <input type="text" class="form-control" id="beregu">
+      </div>
+
+      <div class="mb-3" id="inputBeratGroup" style="display:none">
+        <label for="berat" class="form-label">Berat Badan (kg)</label>
+        <input type="number" class="form-control" id="berat" min="1" step="0.1" oninput="updateKelasOtomatis()">
+      </div>
+
+      <button type="submit" class="btn-submit">Daftar Sekarang</button>
+    </form>
+    <a href="register.html" class="btn-back"><i class="fas fa-arrow-left me-2"></i>Kembali ke Pilih Kelas</a>
+  </div>
+
+  <script>
+    const inputBeratGroup = document.getElementById('inputBeratGroup');
+    const inputBereguGroup = document.getElementById('inputBereguGroup');
+
+    function onJenisChange() {
+      const jenis = document.querySelector('input[name="pertandingan"]:checked')?.value;
+      inputBeratGroup.style.display = jenis === 'Kumite' ? 'block' : 'none';
+      inputBereguGroup.style.display = jenis === 'Kata Beregu' ? 'block' : 'none';
+    }
+
+    function getKategoriUsia(tanggal) {
+      const date = new Date(tanggal);
+      const ranges = [
+        { label: "Senior", from: "2000-01-01", to: "2004-01-01" },
+        { label: "Under-21", from: "2004-01-01", to: "2007-01-01" },
+        { label: "Junior", from: "2007-01-01", to: "2010-01-01" },
+        { label: "Kadet", from: "2010-01-01", to: "2013-01-01" },
+        { label: "Pemula", from: "2013-01-01", to: "2016-01-01" },
+        { label: "Pra-Pemula", from: "2016-01-01", to: "2019-01-01" },
+        { label: "Usia Dini", from: "2019-01-01", to: "2021-01-01" },
+        { label: "Pra-Usia Dini", from: "2021-01-01", to: "2024-01-01" }
+      ];
+      return ranges.find(r => date >= new Date(r.from) && date < new Date(r.to))?.label || "Lainnya";
+    }
+
+    function getBeratKelas(kategori, gender, berat) {
+      const g = gender.toLowerCase();
+      const isPutra = g === 'putra';
+      const kg = parseFloat(berat);
+
+      const map = {
+        "Pra-Usia Dini": () => "Umum",
+        "Usia Dini": () => kg <= 20 ? "-20kg" : "+20kg",
+        "Pra-Pemula": () => isPutra
+          ? kg <= 20 ? "-20kg" : kg <= 25 ? "-25kg" : "+25kg"
+          : kg <= 20 ? "-20kg" : "+20kg",
+        "Pemula": () => isPutra
+          ? kg <= 25 ? "-25kg" : kg <= 30 ? "-30kg" : kg <= 35 ? "-35kg" : "+35kg"
+          : kg <= 25 ? "-25kg" : kg <= 30 ? "-30kg" : "+30kg",
+        "Kadet": () => isPutra
+          ? kg <= 40 ? "-40kg" : kg <= 45 ? "-45kg" : kg <= 52 ? "-52kg" : kg <= 57 ? "-57kg" : "+57kg"
+          : kg <= 40 ? "-40kg" : kg <= 47 ? "-47kg" : "+47kg",
+        "Junior": () => isPutra
+          ? kg <= 55 ? "-55kg" : kg <= 61 ? "-61kg" : kg <= 68 ? "-68kg" : "+68kg"
+          : kg <= 48 ? "-48kg" : kg <= 53 ? "-53kg" : kg <= 59 ? "-59kg" : "+59kg",
+        "Under-21": () => isPutra
+          ? kg <= 60 ? "-60kg" : kg <= 67 ? "-67kg" : kg <= 75 ? "-75kg" : kg <= 84 ? "-84kg" : "+84kg"
+          : kg <= 50 ? "-50kg" : kg <= 55 ? "-55kg" : kg <= 61 ? "-61kg" : kg <= 68 ? "-68kg" : "+68kg",
+        "Senior": () => isPutra
+          ? kg <= 60 ? "-60kg" : kg <= 67 ? "-67kg" : kg <= 75 ? "-75kg" : kg <= 84 ? "-84kg" : "+84kg"
+          : kg <= 50 ? "-50kg" : kg <= 55 ? "-55kg" : kg <= 61 ? "-61kg" : kg <= 68 ? "-68kg" : "+68kg"
+      };
+
+      return map[kategori] ? map[kategori]() : '';
+    }
+
+    function updateKelasOtomatis() {
+      const tanggal = document.getElementById('tanggal_lahir').value;
+      const gender = document.getElementById('gender').value;
+      const pertandingan = document.querySelector('input[name="pertandingan"]:checked')?.value;
+      const berat = document.getElementById('berat')?.value || 0;
+
+      if (!tanggal || !gender || !pertandingan) return;
+
+      const kategori = getKategoriUsia(tanggal);
+      let kelas = '';
+
+      if (pertandingan === 'Kumite') {
+        const kelasBerat = getBeratKelas(kategori, gender, berat);
+        kelas = `Kumite ${kategori} ${kelasBerat} ${gender}`;
+      } else {
+        kelas = `${pertandingan} ${kategori} ${gender}`;
+      }
+
+      document.getElementById('kelas_otomatis').value = kelas;
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/register.js"></script>
+</body>
+</html>

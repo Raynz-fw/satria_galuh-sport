@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Admin - SATRIA GALUH SPORT</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: url('assets/images/register-bg.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .dashboard-container {
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 0 30px rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px);
+    }
+    .dashboard-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      color: black;
+      border: none;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: scale(1.02);
+    }
+    .card i {
+      font-size: 1.5rem;
+      margin-right: 0.5rem;
+    }
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid white;
+      color: white;
+      width: 100%;
+    }
+    .btn-logout:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    canvas {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+    }
+    .section-header {
+      margin-top: 3rem;
+      font-size: 1.25rem;
+      font-weight: bold;
+      text-align: center;
+      color: #ffc107;
+      border-bottom: 1px solid #ffc107;
+      margin-bottom: 1rem;
+    }
+    .table-custom th, .table-custom td {
+      background-color: white;
+      color: black;
+      text-align: center;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="container dashboard-container">
+    <div class="dashboard-title">
+      <i class="fas fa-user-shield me-2"></i>Dashboard Admin - Statistik Peserta
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <a href="lihat-peserta.html" class="card p-3 text-decoration-none d-flex align-items-center">
+          <i class="fas fa-list text-primary"></i>
+          <div>
+            <h5 class="mb-0">Lihat Daftar Peserta</h5>
+            <small>Lihat data pendaftar terbaru</small>
+          </div>
+        </a>
+      </div>
+      <div class="col-md-6">
+        <a href="/unduh-excel" class="card p-3 text-decoration-none d-flex align-items-center">
+          <i class="fas fa-file-excel text-success"></i>
+          <div>
+            <h5 class="mb-0">Unduh File Excel</h5>
+            <small>Download seluruh data pendaftaran</small>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="section-header"><i class="fas fa-layer-group me-2"></i>Jumlah Peserta per Kelas Otomatis</div>
+    <div class="table-responsive">
+      <table class="table table-bordered table-custom" id="kelasTable">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Nama Kelas Otomatis</th>
+            <th>Jumlah Peserta</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="section-header"><i class="fas fa-chart-bar me-2"></i>Jumlah Peserta Festival vs Prestasi</div>
+    <canvas id="jenisChart" height="100"></canvas>
+
+    <div class="section-header"><i class="fas fa-venus-mars me-2"></i>Jenis Kelamin Festival vs Prestasi</div>
+    <canvas id="genderChart" height="100"></canvas>
+
+    <div class="section-header"><i class="fas fa-gamepad me-2"></i>Jenis Pertandingan Festival vs Prestasi</div>
+    <canvas id="jenisPerKategoriChart" height="100"></canvas>
+
+    <div class="section-header"><i class="fas fa-building me-2"></i>Jumlah Peserta per Club</div>
+    <canvas id="clubChart" height="100"></canvas>
+
+    <div class="section-header"><i class="fas fa-user-check me-2"></i>Total Peserta Unik (Festival & Prestasi)</div>
+    <canvas id="totalChart" height="100"></canvas>
+
+    <a href="index.html" class="btn btn-logout mt-4"><i class="fas fa-sign-out-alt me-2"></i>Logout</a>
+  </div>
+
+  <script>
+    fetch('/api/peserta')
+      .then(res => res.json())
+      .then(data => {
+        const kelasCount = {}, genderFestival = {}, genderPrestasi = {}, jenisFestival = {}, jenisPrestasi = {}, clubCount = {};
+        const uniqueFestival = new Set();
+        const uniquePrestasi = new Set();
+        let totalFestival = 0;
+        let totalPrestasi = 0;
+
+        Object.values(data).flat().forEach(p => {
+          const kelas = p["Kelas Otomatis"] || '-';
+          const jenis = p["Jenis Pertandingan"] || '-';
+          const gender = p["Jenis Kelamin"] || p["Gender"] || '-';
+          const club = p["Nama Club"] || p["Nama Dojo"] || '-';
+          const group = p["Kelas Pertandingan"] || '-';
+          const identifier = (p["Nama Lengkap"] || '').trim().toLowerCase() + '|' + (p["Tanggal Lahir"] || '').trim();
+
+          kelasCount[kelas] = (kelasCount[kelas] || 0) + 1;
+          clubCount[club] = (clubCount[club] || 0) + 1;
+
+          if (group === 'Festival') {
+            totalFestival++;
+            uniqueFestival.add(identifier);
+            genderFestival[gender] = (genderFestival[gender] || 0) + 1;
+            jenisFestival[jenis] = (jenisFestival[jenis] || 0) + 1;
+          } else if (group === 'Prestasi') {
+            totalPrestasi++;
+            uniquePrestasi.add(identifier);
+            genderPrestasi[gender] = (genderPrestasi[gender] || 0) + 1;
+            jenisPrestasi[jenis] = (jenisPrestasi[jenis] || 0) + 1;
+          }
+        });
+
+        // TABEL KELAS OTOMATIS
+        const tbody = document.querySelector('#kelasTable tbody');
+        const entries = Object.entries(kelasCount);
+        if (entries.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Belum ada data kelas.</td></tr>`;
+        } else {
+          entries.forEach(([kelas, jumlah], index) => {
+            const row = `<tr><td>${index + 1}</td><td>${kelas}</td><td>${jumlah}</td></tr>`;
+            tbody.innerHTML += row;
+          });
+        }
+
+        const configChart = (ctx, type, labels, data, color) => new Chart(ctx, {
+          type,
+          data: {
+            labels,
+            datasets: [{
+              data,
+              label: 'Jumlah',
+              backgroundColor: Array.isArray(color) ? color : new Array(data.length).fill(color)
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: type !== 'bar' } },
+            scales: type === 'bar' ? { y: { beginAtZero: true } } : {}
+          }
+        });
+
+        configChart(document.getElementById('jenisChart'), 'bar', ['Festival', 'Prestasi'], [totalFestival, totalPrestasi], ['#1cc88a', '#e74a3b']);
+        configChart(document.getElementById('genderChart'), 'bar',
+          ['Putra Festival', 'Putri Festival', 'Putra Prestasi', 'Putri Prestasi'],
+          [genderFestival['Putra']||0, genderFestival['Putri']||0, genderPrestasi['Putra']||0, genderPrestasi['Putri']||0],
+          ['#36b9cc', '#f06292', '#6a1b9a', '#ff8f00']
+        );
+
+        const jenisGabung = [...new Set([...Object.keys(jenisFestival), ...Object.keys(jenisPrestasi)])];
+        const jenisGabungFestival = jenisGabung.map(j => jenisFestival[j] || 0);
+        const jenisGabungPrestasi = jenisGabung.map(j => jenisPrestasi[j] || 0);
+
+        new Chart(document.getElementById('jenisPerKategoriChart'), {
+          type: 'bar',
+          data: {
+            labels: jenisGabung,
+            datasets: [
+              { label: 'Festival', data: jenisGabungFestival, backgroundColor: '#1cc88a' },
+              { label: 'Prestasi', data: jenisGabungPrestasi, backgroundColor: '#e74a3b' }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+
+        configChart(document.getElementById('clubChart'), 'bar', Object.keys(clubCount), Object.values(clubCount), '#f6c23e');
+        configChart(document.getElementById('totalChart'), 'doughnut', ['Festival Unik', 'Prestasi Unik'], [uniqueFestival.size, uniquePrestasi.size], ['#1cc88a', '#e74a3b']);
+      })
+      .catch(err => {
+        console.error('❌ Gagal memuat data:', err);
+        document.querySelector('#kelasTable tbody').innerHTML = `<tr><td colspan="3" class="text-danger">Gagal memuat data kelas otomatis.</td></tr>`;
+      });
+  </script>
+</body>
+</html>

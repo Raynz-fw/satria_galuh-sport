@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daftar Peserta - SATRIA GALUH SPORT</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    html, body {
+      overflow-x: hidden;
+    }
+    body {
+      background: url('assets/images/register-bg.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 0;
+    }
+    .table-container {
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 15px;
+      padding: 2rem;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      animation: fadeIn 1s ease-in-out;
+      max-width: 95%;
+      margin: 0 auto;
+    }
+    .table-title {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-weight: bold;
+      border-bottom: 2px solid #fff;
+      padding-bottom: 1rem;
+    }
+    .table-responsive::after {
+      content: 'Geser ke kanan untuk melihat kolom →';
+      color: white;
+      display: block;
+      text-align: right;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .table th, .table td {
+      color: black;
+      background-color: rgba(255, 255, 255, 0.9);
+      vertical-align: middle;
+      text-align: center;
+      min-width: 100px;
+    }
+    .btn-back {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid white;
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+      margin-top: 1rem;
+    }
+    .btn-back:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .scroll-container {
+      max-height: 70vh;
+      overflow-y: auto;
+      padding-right: 1rem;
+    }
+    .stat-box {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-item {
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      text-align: center;
+      color: #ffc107;
+      min-width: 150px;
+      font-weight: bold;
+      backdrop-filter: blur(3px);
+    }
+    .pagination {
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .pagination li a {
+      color: black;
+    }
+    @media (max-width: 576px) {
+      .table th, .table td {
+        font-size: 12px;
+        padding: 6px;
+        min-width: unset;
+      }
+      .table-responsive::after {
+        font-size: 0.75rem;
+      }
+      .table-title {
+        font-size: 1.3rem;
+      }
+      .table-container {
+        padding: 1rem;
+        max-width: 100%;
+      }
+      .btn-back {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-12">
+        <div class="table-container">
+          <h2 class="table-title text-white"><i class="fas fa-list me-2"></i>DAFTAR PESERTA TERDAFTAR</h2>
+
+          <div class="stat-box" id="statistik"></div>
+
+          <div class="input-group mb-4">
+            <input type="text" class="form-control" placeholder="Cari nama, club, perguruan, kelas, tanggal lahir..." id="searchInput">
+            <button class="btn btn-light" onclick="cariPeserta()">
+              <i class="fas fa-search"></i> Cari
+            </button>
+          </div>
+
+          <div class="scroll-container">
+            <div class="table-responsive">
+              <table class="table table-bordered table-striped" id="tabelPeserta">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Nama</th>
+                    <th>Tanggal Lahir</th>
+                    <th>Jenis Kelamin</th>
+                    <th>Perguruan</th>
+                    <th>Club</th>
+                    <th>Sabuk</th>
+                    <th>Berat</th>
+                    <th>Nama Beregu</th>
+                    <th>Jenis Pertandingan</th>
+                    <th>Kelas Pertandingan</th>
+                    <th>Kelas</th>
+                    <th>Waktu Pendaftaran</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <ul class="pagination" id="pagination"></ul>
+            </div>
+          </div>
+
+          <a href="index.html" class="btn btn-back mt-3">
+            <i class="fas fa-arrow-left me-2"></i>Kembali
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let semuaData = [], dataFiltered = [], currentPage = 1, rowsPerPage = 10;
+
+  fetch('/api/peserta')
+    .then(res => res.json())
+    .then(data => {
+      semuaData = Object.values(data).flat();
+      dataFiltered = [...semuaData];
+      tampilkanData();
+      tampilkanStatistik(semuaData);
+      tampilkanPagination();
+    })
+    .catch(err => {
+      console.error(err);
+      document.querySelector('#tabelPeserta tbody').innerHTML = '<tr><td colspan="13" class="text-center text-danger">Gagal memuat data.</td></tr>';
+    });
+
+  function tampilkanData() {
+    const tbody = document.querySelector('#tabelPeserta tbody');
+    tbody.innerHTML = '';
+    if (dataFiltered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-white">Belum ada data peserta.</td></tr>';
+    } else {
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pageData = dataFiltered.slice(start, end);
+      pageData.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${start + i + 1}</td>
+          <td>${row["Nama Lengkap"] || '-'}</td>
+          <td>${row["Tanggal Lahir"] || '-'}</td>
+          <td>${row["Jenis Kelamin"] || row["Gender"] || '-'}</td>
+          <td>${row["Perguruan"] || '-'}</td>
+          <td>${row["Nama Club"] || row["Nama Dojo"] || '-'}</td>
+          <td>${row["Sabuk"] || row["Kelas"] || '-'}</td>
+          <td>${row["Berat"] || '-'}</td>
+          <td>${row["Nama Beregu"] || row["Beregu"] || '-'}</td>
+          <td>${row["Jenis Pertandingan"] || '-'}</td>
+          <td>${row["Kelas Pertandingan"] || '-'}</td>
+          <td>${row["Kelas Otomatis"] || '-'}</td>
+          <td>${row["Waktu Pendaftaran"] || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  function tampilkanPagination() {
+    const pageCount = Math.ceil(dataFiltered.length / rowsPerPage);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+
+    for (let i = 1; i <= pageCount; i++) {
+      const li = document.createElement('li');
+      li.className = 'page-item' + (i === currentPage ? ' active' : '');
+      li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+      li.addEventListener('click', e => {
+        e.preventDefault();
+        currentPage = i;
+        tampilkanData();
+        tampilkanPagination();
+      });
+      pagination.appendChild(li);
+    }
+  }
+
+  function cariPeserta() {
+    const keyword = document.getElementById('searchInput').value.toLowerCase();
+    dataFiltered = semuaData.filter(p =>
+      (p["Nama Lengkap"] || '').toLowerCase().includes(keyword) ||
+      (p["Nama Club"] || p["Nama Dojo"] || '').toLowerCase().includes(keyword) ||
+      (p["Perguruan"] || '').toLowerCase().includes(keyword) ||
+      (p["Sabuk"] || p["Kelas"] || '').toLowerCase().includes(keyword) ||
+      (p["Jenis Pertandingan"] || '').toLowerCase().includes(keyword) ||
+      (p["Kelas Pertandingan"] || '').toLowerCase().includes(keyword) ||
+      (p["Kelas Otomatis"] || '').toLowerCase().includes(keyword) ||
+      (p["Nama Beregu"] || p["Beregu"] || '').toLowerCase().includes(keyword) ||
+      (p["Tanggal Lahir"] || '').toLowerCase().includes(keyword)
+    );
+    currentPage = 1;
+    tampilkanData();
+    tampilkanPagination();
+  }
+
+  function tampilkanStatistik(data) {
+    const statDiv = document.getElementById('statistik');
+    const total = data.length;
+    const festival = data.filter(p => p["Kelas Pertandingan"] === "Festival").length;
+    const prestasi = data.filter(p => p["Kelas Pertandingan"] === "Prestasi").length;
+    const putra = data.filter(p => (p["Jenis Kelamin"] || '').toLowerCase() === 'putra').length;
+    const putri = data.filter(p => (p["Jenis Kelamin"] || '').toLowerCase() === 'putri').length;
+    const clubSet = new Set(data.map(p => (p["Nama Club"] || p["Nama Dojo"] || '').toLowerCase()));
+    const perguruanSet = new Set(data.map(p => (p["Perguruan"] || '').toLowerCase()));
+
+    statDiv.innerHTML = `
+      <div class="stat-item">👥 Total: ${total}</div>
+      <div class="stat-item">🏅 Festival: ${festival}</div>
+      <div class="stat-item">🥇 Prestasi: ${prestasi}</div>
+      <div class="stat-item">👦 Putra: ${putra}</div>
+      <div class="stat-item">👧 Putri: ${putri}</div>
+      <div class="stat-item">🏢 Club Unik: ${clubSet.size}</div>
+      <div class="stat-item">🥋 Perguruan Unik: ${perguruanSet.size}</div>
+    `;
+  }
+</script>
+</body>
+</html>
