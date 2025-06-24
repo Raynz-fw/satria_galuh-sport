@@ -17,67 +17,27 @@ function getKategoriUsia(tanggal) {
 
 function getKelasBerat(kategori, gender, berat) {
   const g = gender.toLowerCase();
-  if (kategori === "Pra-Usia Dini") {
-    return "Umum";
-  } else if (kategori === "Usia Dini") {
+  if (kategori === "Pra-Usia Dini") return "Umum";
+  if (kategori === "Usia Dini") return berat < 20 ? "-20kg" : "+20kg";
+  if (kategori === "Pra-Pemula") {
+    if (g === "putra") return berat < 20 ? "-20kg" : berat < 25 ? "-25kg" : "+25kg";
     return berat < 20 ? "-20kg" : "+20kg";
-  } else if (kategori === "Pra-Pemula") {
-    if (g === "putra") {
-      if (berat < 20) return "-20kg";
-      if (berat < 25) return "-25kg";
-      return "+25kg";
-    } else {
-      return berat < 20 ? "-20kg" : "+20kg";
-    }
-  } else if (kategori === "Pemula") {
-    if (g === "putra") {
-      if (berat < 25) return "-25kg";
-      if (berat < 30) return "-30kg";
-      if (berat < 35) return "-35kg";
-      return "+35kg";
-    } else {
-      if (berat < 25) return "-25kg";
-      if (berat < 30) return "-30kg";
-      return "+30kg";
-    }
-  } else if (kategori === "Kadet") {
-    if (g === "putra") {
-      if (berat < 40) return "-40kg";
-      if (berat < 45) return "-45kg";
-      if (berat < 52) return "-52kg";
-      if (berat < 57) return "-57kg";
-      return "+57kg";
-    } else {
-      if (berat < 40) return "-40kg";
-      if (berat < 47) return "-47kg";
-      return "+47kg";
-    }
-  } else if (kategori === "Junior") {
-    if (g === "putra") {
-      if (berat < 55) return "-55kg";
-      if (berat < 61) return "-61kg";
-      if (berat < 68) return "-68kg";
-      return "+68kg";
-    } else {
-      if (berat < 48) return "-48kg";
-      if (berat < 53) return "-53kg";
-      if (berat < 59) return "-59kg";
-      return "+59kg";
-    }
-  } else if (kategori === "Under-21" || kategori === "Senior") {
-    if (g === "putra") {
-      if (berat < 60) return "-60kg";
-      if (berat < 67) return "-67kg";
-      if (berat < 75) return "-75kg";
-      if (berat < 84) return "-84kg";
-      return "+84kg";
-    } else {
-      if (berat < 50) return "-50kg";
-      if (berat < 55) return "-55kg";
-      if (berat < 61) return "-61kg";
-      if (berat < 68) return "-68kg";
-      return "+68kg";
-    }
+  }
+  if (kategori === "Pemula") {
+    if (g === "putra") return berat < 25 ? "-25kg" : berat < 30 ? "-30kg" : berat < 35 ? "-35kg" : "+35kg";
+    return berat < 25 ? "-25kg" : berat < 30 ? "-30kg" : "+30kg";
+  }
+  if (kategori === "Kadet") {
+    if (g === "putra") return berat < 40 ? "-40kg" : berat < 45 ? "-45kg" : berat < 52 ? "-52kg" : berat < 57 ? "-57kg" : "+57kg";
+    return berat < 40 ? "-40kg" : berat < 47 ? "-47kg" : "+47kg";
+  }
+  if (kategori === "Junior") {
+    if (g === "putra") return berat < 55 ? "-55kg" : berat < 61 ? "-61kg" : berat < 68 ? "-68kg" : "+68kg";
+    return berat < 48 ? "-48kg" : berat < 53 ? "-53kg" : berat < 59 ? "-59kg" : "+59kg";
+  }
+  if (kategori === "Under-21" || kategori === "Senior") {
+    if (g === "putra") return berat < 60 ? "-60kg" : berat < 67 ? "-67kg" : berat < 75 ? "-75kg" : berat < 84 ? "-84kg" : "+84kg";
+    return berat < 50 ? "-50kg" : berat < 55 ? "-55kg" : berat < 61 ? "-61kg" : berat < 68 ? "-68kg" : "+68kg";
   }
   return "Umum";
 }
@@ -86,24 +46,36 @@ function generateKelasOtomatis({ tanggal_lahir, gender, pertandingan, kelas_pert
   const kategori = getKategoriUsia(tanggal_lahir);
   if (!tanggal_lahir || !gender || !pertandingan) return '';
 
-  const genderFix = gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
-  let kelas = '';
+  const GENDER = gender.toUpperCase();
+  const upperKategori = kategori.toUpperCase();
+  const upperSabuk = (sabuk || '').toUpperCase();
 
   if (pertandingan === 'Kumite') {
-    const kelasBerat = getKelasBerat(kategori, genderFix, berat || 0);
-    kelas = `${pertandingan} ${kategori} ${kelasBerat} ${genderFix}`;
-  } else {
+    const kelasBerat = getKelasBerat(kategori, gender, berat || 0);
     if (kelas_pertandingan === 'Festival') {
-      kelas = `${pertandingan} ${kategori} Sabuk ${sabuk} ${genderFix}`;
+      return `FESTIVAL KUMITE ${upperKategori} ${kelasBerat.toUpperCase()} ${GENDER}`;
     } else {
-      kelas = `${pertandingan} ${kategori} ${genderFix}`;
+      return `KUMITE ${upperKategori} ${kelasBerat.toUpperCase()} ${GENDER}`;
     }
   }
 
-  if (kelas_pertandingan === 'Festival') {
-    return `Festival ${kelas}`;
+  if (pertandingan === 'Kata') {
+    if (kelas_pertandingan === 'Festival') {
+      return `FESTIVAL KATA PERORANGAN ${upperKategori} SABUK ${upperSabuk} ${GENDER}`;
+    } else {
+      return `KATA PERORANGAN ${upperKategori} ${GENDER}`;
+    }
   }
-  return kelas;
+
+  if (pertandingan === 'Kata Beregu') {
+    if (kelas_pertandingan === 'Festival') {
+      return `FESTIVAL KATA BEREGU ${upperKategori} SABUK ${upperSabuk} ${GENDER}`;
+    } else {
+      return `KATA BEREGU ${upperKategori} ${GENDER}`;
+    }
+  }
+
+  return '';
 }
 
 function getFormData(formId) {
@@ -198,7 +170,7 @@ function previewData(data, callback) {
   if (sabuk) html += `<li><b>Sabuk:</b> ${sabuk}</li>`;
   if (berat) html += `<li><b>Berat:</b> ${berat} kg</li>`;
   if (beregu) html += `<li><b>Nama Tim Beregu:</b> ${beregu}</li>`;
-  if (Kelas) html += `<li><b>Kelas:</b> ${Kelas}</li>`;
+  if (Kelas) html += `<li><b>Kelas:</b> <b>${Kelas}</b></li>`;
   html += `</ul>`;
 
   Swal.fire({

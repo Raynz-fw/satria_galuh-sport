@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
@@ -11,10 +12,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const EXCEL_FILE_PATH = path.join(DATA_DIR, 'Data_Pendaftaran.xlsx');
+const KOMPETITOR_FILE_PATH = path.join(DATA_DIR, 'seluruh Kompetitor.xlsx');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
-// 🔄 Upload ke Google Drive
+// Fungsi Upload ke Google Drive (opsional)
 async function uploadToGoogleDrive(filePath, fileName) {
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -24,27 +26,22 @@ async function uploadToGoogleDrive(filePath, fileName) {
   auth.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
 
   const drive = google.drive({ version: 'v3', auth });
-
   const fileMetadata = {
     name: fileName,
     parents: [process.env.GOOGLE_FOLDER_ID]
   };
-
   const media = {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     body: fs.createReadStream(filePath)
   };
-
-  const response = await drive.files.create({
+  await drive.files.create({
     resource: fileMetadata,
     media,
     fields: 'id'
   });
-
-  console.log('✅ File diupload ke Google Drive. ID:', response.data.id);
 }
 
-// 🧠 Logika Kelas Otomatis
+// Usia & Kelas
 function getKategoriUsia(tanggalLahir) {
   const birth = new Date(tanggalLahir);
   const ranges = [
@@ -63,8 +60,7 @@ function getKategoriUsia(tanggalLahir) {
 function getKelasKumite(kategori, gender, berat) {
   const G = gender.toLowerCase() === 'putri' ? 'Putri' : 'Putra';
   const b = parseFloat(berat) || 0;
-
-  const kategoriMap = {
+  const map = {
     'Pra-Usia Dini': [`${G}`],
     'Usia Dini': b <= 20 ? ['-20kg'] : ['+20kg'],
     'Pra-Pemula': G === 'Putra' ? (b <= 20 ? ['-20kg'] : b <= 25 ? ['-25kg'] : ['+25kg']) : (b <= 20 ? ['-20kg'] : ['+20kg']),
@@ -84,137 +80,197 @@ function getKelasKumite(kategori, gender, berat) {
       (b <= 60 ? ['-60kg'] : b <= 67 ? ['-67kg'] : b <= 75 ? ['-75kg'] : b <= 84 ? ['-84kg'] : ['+84kg']) :
       (b <= 50 ? ['-50kg'] : b <= 55 ? ['-55kg'] : b <= 61 ? ['-61kg'] : b <= 68 ? ['-68kg'] : ['+68kg'])
   };
-
-  const kelas = kategoriMap[kategori] || ['Umum'];
-  return `${kelas[0]} ${G}`;
+  return `${map[kategori] || ['Umum']} ${G}`;
 }
 
+// Kelas Otomatis
 function buatKelasOtomatis(data) {
   const kategori = getKategoriUsia(data.tanggal_lahir);
-  const jenis = data.pertandingan;
-  const gender = (data.gender || '').toLowerCase() === 'putri' ? 'Putri' : 'Putra';
-  const labelPrefix = data['Kelas Pertandingan'] === 'Festival' ? 'Festival ' : '';
+  const jenis = (data.pertandingan || '').toLowerCase();
+  const isFestival = data['Kelas Pertandingan'] === 'Festival';
+  const isBeregu = (data.beregu || '').trim() !== '';
+  const sabuk = data.sabuk || '';
+  const gender = (data.gender || '').toLowerCase() === 'putri' ? 'PUTRI' : 'PUTRA';
   const berat = parseFloat(data.berat) || 0;
 
-  if (jenis === 'Kumite') {
-    const kelasBerat = getKelasKumite(kategori, gender, berat);
-    return `${labelPrefix}${jenis} ${kategori} ${kelasBerat}`;
+  if (jenis === 'kumite') {
+    const kelasBerat = getKelasKumite(kategori, gender, berat).toUpperCase();
+    return isFestival
+      ? `FESTIVAL KUMITE ${kategori.toUpperCase()} ${kelasBerat}`
+      : `KUMITE ${kategori.toUpperCase()} ${kelasBerat}`;
   } else {
-    return `${labelPrefix}${jenis} ${kategori} ${gender}`;
+    const jenisKata = isBeregu ? 'KATA BEREGU' : 'KATA PERORANGAN';
+    if (isFestival) {
+      return `FESTIVAL ${jenisKata} ${kategori.toUpperCase()} SABUK ${sabuk.toUpperCase()} ${gender}`;
+    } else {
+      return `${jenisKata} ${kategori.toUpperCase()} ${gender}`;
+    }
   }
 }
 
-// 🧾 Inisialisasi Excel
-async function initializeExcel() {
-  if (fs.existsSync(EXCEL_FILE_PATH)) return;
-
-  const workbook = new ExcelJS.Workbook();
-  const createSheet = (name) => {
-    const sheet = workbook.addWorksheet(name);
-    sheet.columns = [
-      { header: 'No', key: 'no', width: 5 },
-      { header: 'Nama Lengkap', key: 'nama', width: 25 },
-      { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 15 },
-      { header: 'Jenis Kelamin', key: 'gender', width: 15 },
-      { header: 'Perguruan', key: 'perguruan', width: 20 },
-      { header: 'Nama Club', key: 'club', width: 25 },
-      { header: 'Sabuk', key: 'sabuk', width: 12 },
-      { header: 'Berat', key: 'berat', width: 10 },
-      { header: 'Nama Beregu', key: 'beregu', width: 20 },
-      { header: 'Jenis Pertandingan', key: 'pertandingan', width: 18 },
-      { header: 'Kelas Pertandingan', key: 'kelas', width: 20 },
-      { header: 'Kelas Otomatis', key: 'kelas_otomatis', width: 30 },
-      { header: 'Waktu Pendaftaran', key: 'waktu', width: 25 }
-    ];
-    sheet.getRow(1).eachCell(cell => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
-      cell.font = { bold: true };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-  };
-
-  createSheet('Festival');
-  createSheet('Open');
-  await workbook.xlsx.writeFile(EXCEL_FILE_PATH);
+// Format Excel
+function formatHeader(sheet) {
+  const row = sheet.getRow(1);
+  row.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF99' } };
+    cell.font = { bold: true };
+    cell.alignment = { horizontal: 'center' };
+  });
+  row.commit();
 }
 
-// 📦 Middleware
+function formatIsi(sheet) {
+  sheet.eachRow((row, idx) => {
+    if (idx === 1) return;
+    row.eachCell(cell => cell.alignment = { horizontal: 'left' });
+    row.commit();
+  });
+}
+
+function generateAgeCategorySheet(wb) {
+  const s = wb.addWorksheet('Age Category');
+  s.columns = [
+    { header: 'Age Categories', width: 20 },
+    { header: 'Tournament: Age Range (Year)', width: 30 },
+    { header: 'Birthdate From', width: 18 },
+    { header: 'Birthdate To', width: 18 },
+    { header: 'Festival: Age Range (Year)', width: 30 },
+    { header: 'Birthdate From', width: 18 },
+    { header: 'Birthdate To', width: 18 }
+  ];
+  const now = new Date();
+  const d = (y, m = 6, d = 24) => new Date(`${y}-${m}-${d}`);
+  const data = [
+    { kategori: 'BOB', range: '14-40 Year', from: d(1985), to: d(2011) },
+    { kategori: 'SENIOR', range: '21-40 Year', from: d(1985), to: d(2004) },
+    { kategori: 'UNDER 21', range: '18-20 Year', from: d(2005), to: d(2007) },
+    { kategori: 'JUNIOR', range: '16-17 Year', from: d(2008), to: d(2009) },
+    { kategori: 'KADET', range: '14-15 Year', from: d(2010), to: d(2011) },
+    { kategori: 'PEMULA', range: '12-13 Year', from: d(2012), to: d(2013) },
+    { kategori: 'PRA PEMULA', range: '10-11 Year', from: d(2014), to: d(2015) },
+    { kategori: 'USIA DINI', range: '8-9 Year', from: d(2016), to: d(2017) },
+    { kategori: 'PRA USIA DINI', range: '5-7 Year', from: d(2018), to: d(2020) },
+  ];
+  data.forEach(r => {
+    s.addRow([
+      r.kategori, r.range, r.from.toISOString().split('T')[0], r.to.toISOString().split('T')[0],
+      r.range, r.from.toISOString().split('T')[0], r.to.toISOString().split('T')[0]
+    ]);
+  });
+  formatHeader(s);
+  formatIsi(s);
+}
+
+// Inisialisasi File
+async function initExcelFiles() {
+  const wb1 = new ExcelJS.Workbook();
+  const wb2 = new ExcelJS.Workbook();
+
+  if (!fs.existsSync(EXCEL_FILE_PATH)) {
+    ['Festival', 'Open'].forEach(sheetName => {
+      const s = wb1.addWorksheet(sheetName);
+      s.columns = [
+        { header: 'No', width: 3.5 },
+        { header: 'Nama Lengkap', width: 35 },
+        { header: 'Tanggal Lahir', width: 15 },
+        { header: 'Jenis Kelamin', width: 15 },
+        { header: 'Perguruan', width: 13 },
+        { header: 'Nama Club', width: 20 },
+        { header: 'Sabuk', width: 10 },
+        { header: 'Berat', width: 8 },
+        { header: 'Nama Beregu', width: 20 },
+        { header: 'Jenis Pertandingan', width: 20 },
+        { header: 'Kelas Pertandingan', width: 20 },
+        { header: 'Kelas Otomatis', width: 60 },
+        { header: 'Waktu Pendaftaran', width: 25 }
+      ];
+      formatHeader(s);
+    });
+    await wb1.xlsx.writeFile(EXCEL_FILE_PATH);
+  }
+
+  if (!fs.existsSync(KOMPETITOR_FILE_PATH)) {
+    const s = wb2.addWorksheet('Competitors');
+    s.columns = [
+      { header: 'Nama Lengkap', width: 35 },
+      { header: 'Perguruan', width: 15 },
+      { header: 'Nama Club', width: 25 },
+      { header: 'Gender', width: 15 },
+      { header: 'Tanggal Lahir', width: 15 },
+      { header: 'Country', width: 15 },
+      { header: 'Berat Badan (kg)', width: 20 },
+      { header: 'Prestasi/Age Category', width: 60 },
+      { header: 'Festival/Age Category', width: 60 }
+    ];
+    formatHeader(s);
+    generateAgeCategorySheet(wb2);
+    await wb2.xlsx.writeFile(KOMPETITOR_FILE_PATH);
+  }
+}
+
+// Middleware
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'default_secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false }
-}));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
+app.use(express.static('public'));
 
-// 🔐 Login Admin
+// Daftar
+app.post('/daftar', async (req, res) => {
+  try {
+    await initExcelFiles();
+    const data = req.body;
+    const waktu = new Date().toLocaleString('id-ID');
+    const kelasOtomatis = buatKelasOtomatis(data);
+    const sheetName = data['Kelas Pertandingan'] === 'Prestasi' ? 'Open' : 'Festival';
+
+    const wb1 = new ExcelJS.Workbook();
+    await wb1.xlsx.readFile(EXCEL_FILE_PATH);
+    const s1 = wb1.getWorksheet(sheetName);
+    const row1 = s1.addRow([
+      s1.rowCount, data.nama, data.tanggal_lahir, data.gender,
+      data.perguruan, data.club, data.sabuk, data.berat,
+      data.beregu || '', data.pertandingan, data['Kelas Pertandingan'],
+      kelasOtomatis, waktu
+    ]);
+    row1.getCell(12).font = { bold: true };
+    row1.eachCell(c => c.alignment = { horizontal: 'left' });
+    await wb1.xlsx.writeFile(EXCEL_FILE_PATH);
+
+    const wb2 = new ExcelJS.Workbook();
+    await wb2.xlsx.readFile(KOMPETITOR_FILE_PATH);
+    const s2 = wb2.getWorksheet('Competitors');
+    const row2 = s2.addRow([
+      data.nama, data.perguruan, data.club, data.gender,
+      data.tanggal_lahir, data.negara || 'Indonesia', data.berat,
+      data['Kelas Pertandingan'] === 'Prestasi' ? kelasOtomatis : '',
+      data['Kelas Pertandingan'] === 'Festival' ? kelasOtomatis : ''
+    ]);
+    row2.getCell(8).font = { bold: true };
+    row2.getCell(9).font = { bold: true };
+    row2.eachCell(c => c.alignment = { horizontal: 'left' });
+    await wb2.xlsx.writeFile(KOMPETITOR_FILE_PATH);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ ERROR DAFTAR:', err);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Admin Login
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
-  if (
-    username === process.env.ADMIN_USERNAME &&
-    password === process.env.ADMIN_PASSWORD
-  ) {
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     req.session.admin = true;
     res.json({ success: true });
   } else {
-    res.json({ success: false, message: 'Username atau password salah' });
+    res.status(401).json({ success: false });
   }
 });
 
-// 🛡️ Middleware admin
-function isAdmin(req, res, next) {
-  if (req.session && req.session.admin) next();
-  else res.status(403).send('Akses ditolak. Silakan login sebagai admin.');
-}
-
-// ✍️ Simpan Pendaftaran
-app.post('/daftar', async (req, res) => {
-  try {
-    await initializeExcel();
-    const data = req.body;
-    const sheetName = data['Kelas Pertandingan'] === 'Prestasi' ? 'Open' : 'Festival';
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(EXCEL_FILE_PATH);
-    const sheet = workbook.getWorksheet(sheetName);
-
-    const lastRow = sheet.lastRow ? sheet.lastRow.number + 1 : 2;
-    const kelasOtomatis = buatKelasOtomatis(data);
-
-    const newRow = sheet.addRow([
-      lastRow - 1,
-      data.nama,
-      data.tanggal_lahir,
-      data.gender || '',
-      data.perguruan || '',
-      data.club,
-      data.kelas || data.sabuk || '',
-      data.berat || '',
-      data.beregu || '',
-      data.pertandingan,
-      data['Kelas Pertandingan'],
-      kelasOtomatis,
-      new Date().toLocaleString('id-ID')
-    ]);
-
-    newRow.eachCell(cell => {
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-
-    await workbook.xlsx.writeFile(EXCEL_FILE_PATH);
-    await uploadToGoogleDrive(EXCEL_FILE_PATH, `Data_Pendaftaran_${Date.now()}.xlsx`);
-    res.json({ success: true, message: `Data berhasil ditambahkan ke sheet ${sheetName}` });
-  } catch (err) {
-    console.error('❌ Gagal simpan:', err);
-    res.status(500).json({ success: false, message: 'Terjadi kesalahan server' });
-  }
-});
-
-// 📥 Unduh file Excel
-app.get('/unduh-excel', isAdmin, (req, res) => {
+// Unduh Excel
+app.get('/unduh-excel', (req, res) => {
   if (fs.existsSync(EXCEL_FILE_PATH)) {
     res.download(EXCEL_FILE_PATH);
   } else {
@@ -222,35 +278,34 @@ app.get('/unduh-excel', isAdmin, (req, res) => {
   }
 });
 
-// 📖 Lihat data peserta
+// API Peserta
 app.get('/api/peserta', async (req, res) => {
   try {
-    await initializeExcel();
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.readFile(EXCEL_FILE_PATH);
-    const data = {};
-    workbook.eachSheet(sheet => {
+    await initExcelFiles();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(EXCEL_FILE_PATH);
+    const result = {};
+    wb.eachSheet(sheet => {
       const rows = [];
-      sheet.eachRow({ includeEmpty: false }, (row, rowIndex) => {
-        if (rowIndex === 1) return;
+      sheet.eachRow((row, i) => {
+        if (i === 1) return;
         const obj = {};
-        sheet.getRow(1).eachCell((cell, colIndex) => {
-          obj[cell.value] = row.getCell(colIndex).value;
+        sheet.getRow(1).eachCell((cell, j) => {
+          obj[cell.value] = row.getCell(j).value;
         });
         rows.push(obj);
       });
-      data[sheet.name] = rows;
+      result[sheet.name] = rows;
     });
-    res.json(data);
-  } catch (err) {
-    console.error('❌ Gagal baca peserta:', err);
-    res.status(500).json({ error: 'Gagal membaca file peserta' });
+    res.json(result);
+  } catch {
+    res.status(500).json({ error: 'Gagal membaca file.' });
   }
 });
 
-// 🏁 Jalankan server
-initializeExcel().then(() => {
+// Jalankan Server
+initExcelFiles().then(() => {
   app.listen(port, () => {
-    console.log(`✅ Server berjalan di http://localhost:${port}`);
+    console.log(`✅ Server aktif di http://localhost:${port}`);
   });
 });
